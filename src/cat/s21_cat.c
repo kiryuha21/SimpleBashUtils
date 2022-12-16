@@ -11,17 +11,37 @@ char* apply_flag(char* src, char flag) {
         return_value = two_sym_replacement(src, v_flag_validator, '^', v_flag_second_value);
     } else if (flag == 'b') {
         return_value = number_lines(src, 0);
-    } else if (flag == 'e') {
-        return_value = two_sym_replacement(src, e_flag_validator, '$', e_flag_second_value);
     } else if (flag == 'n') {
         return_value = number_lines(src, 1);
     } else if (flag == 's') {
         return_value = apply_s_flag(src);
-    } else if (flag == 't') {
+    } else if (flag == 'E') {
+        return_value = two_sym_replacement(src, e_flag_validator, '$', e_flag_second_value);
+    } else if (flag == 'T') {
         return_value = two_sym_replacement(src, t_flag_validator, '^', t_flag_second_value);
+    } else if (flag == 't' || flag == 'e') {
+        char* temp = two_sym_replacement(src, v_flag_validator, '^', v_flag_second_value);
+        if (flag == 't') {
+            return_value = two_sym_replacement(temp, t_flag_validator, '^', t_flag_second_value);
+        } else {
+            return_value = two_sym_replacement(temp, e_flag_validator, '$', e_flag_second_value);
+        }
+        free(temp);
     }
 
     return return_value;
+}
+
+void shorten_flags(char** flags, int flags_count) {
+    for (int i = 1; i < flags_count; ++i) {
+        if (strcmp(flags[i], "--number-nonblank") == 0) {
+            flags[i] = "-b";
+        } else if (strcmp(flags[i], "--number") == 0) {
+            flags[i] = "-n";
+        } else if (strcmp(flags[i], "--squeeze-blank") == 0) {
+            flags[i] = "-s";
+        }
+    }
 }
 
 char* apply_s_flag(char* src) {
@@ -39,12 +59,12 @@ char* apply_s_flag(char* src) {
     size_t new_len = len - changes_count;
     char* modified = (char*) calloc(sizeof(char), new_len);
 
-    int src_index = 0;
+    size_t src_index = 0;
     if (src[0] == '\n' && src[1] == '\n') {
         ++src_index;
     }
 
-    for (int res_index = 0; src_index < len - 1; ++res_index, ++src_index) {
+    for (size_t res_index = 0; src_index < len - 1; ++res_index, ++src_index) {
         if (src[src_index] == '\n') {
             while (src[src_index + 1] == '\n' && src[src_index - 1] == '\n') {
                 ++src_index;
@@ -59,14 +79,14 @@ char* apply_s_flag(char* src) {
 }
 
 int t_flag_validator(char ch) { return ch == '\t'; }
-char t_flag_second_value(char ch) { return 'I'; }
+char t_flag_second_value(char) { return 'I'; }
 
 int e_flag_validator(char ch) { return ch == '\n'; }
-char e_flag_second_value(char ch) { return '\n'; }
+char e_flag_second_value(char) { return '\n'; }
 
 int v_flag_validator(char ch) {
     int return_value = 0;
-    if ((ch >= 0 && ch <= 31 || ch == 127) &&
+    if (((ch >= 0 && ch <= 31) || ch == 127) &&
         (ch != '\n' && ch != '\f' && ch != '\t')) {
         return_value = 1;
     }
@@ -128,9 +148,9 @@ char* number_lines(char* src, int with_blank) {
     } else {
         size_t len = strlen(src);
         int changes_count = 0;
-        for (int i = 0; i < len - 1; ++i) {
+        for (size_t i = 0; i < len - 1; ++i) {
             if (src[i] == '\n') {
-                if (with_blank || src[i + 1] != '\n' && i != 0) {
+                if (with_blank || (src[i + 1] != '\n' && i != 0)) {
                     changes_count += 7;
                 }
             }
@@ -179,6 +199,7 @@ int main(int argc, char** argv) {
             fread(file_content, fsize, 1, file);
             fclose(file);
 
+            shorten_flags(argv, argc - 1);
             for (int i = 1; i < argc - 1; ++i) {
                 size_t combo_flags_len = strlen(argv[i]);
                 for (size_t j = 1; j < combo_flags_len; ++j) {
