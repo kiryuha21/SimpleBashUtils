@@ -1,6 +1,9 @@
 # CLion generics
 .idea
 
+# Test files
+test*
+
 # Prerequisites
 *.d
 
@@ -32,8 +35,7 @@
 *.dylib
 
 # Executables
-src/cat/s21_cat
-src/grep/s21_grep
+bin
 *.exe
 *.app
 *.i*86
