@@ -4,32 +4,42 @@
 
 #include "s21_cat.h"
 
-char* apply_flag(char* src, size_t* len, char flag) {
+void prepare_for_fill(char** first, char** second) {
+    if (*first != NULL) {
+        free(*first);
+    }
+    *first = *second;
+}
+
+char* apply_flags(Arguments* args, char* buffer, size_t* len) {
     char* return_value = NULL;
 
-    if (flag == 'v') {
-        return_value = two_sym_replacement(src, len, v_flag_validator, '^', v_flag_second_value);
-    } else if (flag == 'b') {
-        return_value = number_lines(src, len, 0);
-    } else if (flag == 'n') {
-        return_value = number_lines(src, len, 1);
-    } else if (flag == 's') {
-        return_value = apply_s_flag(src, len);
-    } else if (flag == 'E') {
-        return_value = two_sym_replacement(src, len, e_flag_validator, '$', e_flag_second_value);
-    } else if (flag == 'T') {
-        return_value = two_sym_replacement(src, len, t_flag_validator, '^', t_flag_second_value);
-    } else if (flag == 't' || flag == 'e') {
-        char* temp = two_sym_replacement(src, len, v_flag_validator, '^', v_flag_second_value);
-        if (flag == 't') {
-            return_value = two_sym_replacement(temp, len, t_flag_validator, '^', t_flag_second_value);
-        } else {
-            return_value = two_sym_replacement(temp, len, e_flag_validator, '$', e_flag_second_value);
-        }
-        free(temp);
+    if (args->s_flag) {
+        return_value = apply_s_flag(buffer, len);
+        prepare_for_fill(&buffer, &return_value);
+    }
+    if (args->t_flag) {
+        return_value = two_sym_replacement(buffer, len, t_flag_validator, '^', t_flag_second_value);
+        prepare_for_fill(&buffer, &return_value);
+    }
+    if (args->b_flag) {
+        return_value = number_lines(buffer, len, 0);
+        prepare_for_fill(&buffer, &return_value);
+    }
+    if (args->e_flag) {
+        return_value = two_sym_replacement(buffer, len, e_flag_validator, '$', e_flag_second_value);
+        prepare_for_fill(&buffer, &return_value);
+    }
+    if (args->v_flag) {
+        return_value = two_sym_replacement(buffer, len, v_flag_validator, '^', v_flag_second_value);
+        prepare_for_fill(&buffer, &return_value);
+    }
+    if (args->n_flag) {
+        return_value = number_lines(buffer, len, 1);
+        prepare_for_fill(&buffer, &return_value);
     }
 
-    return return_value;
+    return buffer;
 }
 
 void shorten_flags(char** flags, int flags_count) {
@@ -42,69 +52,6 @@ void shorten_flags(char** flags, int flags_count) {
             flags[i] = "-s";
         }
     }
-}
-
-char** optimize_flags(char** flags, int* flags_count) {
-    int b = 0, e = 0, n = 0, s = 0, t = 0, v = 0;
-
-    char* first_arg = flags[0];
-    char* last_arg = flags[*flags_count - 1];
-
-    for (int i = 1; i < *flags_count - 1; ++i) {
-        size_t combo_len = strlen(flags[i]);
-        for (size_t j = 1; j < combo_len; ++j) {
-            if (flags[i][j] == 'b') {
-                b = 1;
-            } else if (flags[i][j] == 'e') {
-                e = 1;
-            } else if (flags[i][j] == 'n') {
-                n = 1;
-            } else if (flags[i][j] == 's') {
-                s = 1;
-            } else if (flags[i][j] == 't') {
-                t = 1;
-            } else if (flags[i][j] == 'v') {
-                v = 1;
-            }
-        }
-    }
-
-    *flags_count = b + e + n + s + t + v + 2;
-    if (b && n) {
-        --(*flags_count);
-    }
-    char** new_flags = (char**) calloc(sizeof(char*), *flags_count);
-
-    new_flags[0] = first_arg;
-
-    int last_ind = 1;
-    if (s) {
-        new_flags[last_ind] = "-s";
-        ++last_ind;
-    }
-    if (t) {
-        new_flags[last_ind] = "-t";
-        ++last_ind;
-    }
-    if (b) {
-        new_flags[last_ind] = "-b";
-        ++last_ind;
-    }
-    if (e) {
-        new_flags[last_ind] = "-e";
-        ++last_ind;
-    }
-    if (v) {
-        new_flags[last_ind] = "-v";
-        ++last_ind;
-    } else if (n) {
-        new_flags[last_ind] = "-n";
-        ++last_ind;
-    }
-
-    new_flags[last_ind] = last_arg;
-
-    return new_flags;
 }
 
 char* apply_s_flag(const char* src, size_t* len) {
@@ -248,37 +195,91 @@ char* number_lines(char* src, size_t* len, int with_blank) {
     return return_value;
 }
 
+void parseArguments(Arguments* args, char** argv, int argc) {
+    args->b_flag = 0;
+    args->e_flag = 0;
+    args->n_flag = 0;
+    args->s_flag = 0;
+    args->t_flag = 0;
+    args->v_flag = 0;
+    args->files_count = 0;
+    args->broken_file = 0;
+    args->files = NULL;
+
+    for (int i = 1; i < argc; ++i) {
+        if (argv[i][0] == '-') {
+            size_t len = strlen(argv[i]);
+            for (size_t j = 1; j < len; ++j) {
+                if (argv[i][j] == 'b') {
+                    args->b_flag = 1;
+                }
+                if (argv[i][j] == 'e' || argv[i][j] == 'E') {
+                    args->e_flag = 1;
+                }
+                if (argv[i][j] == 'n') {
+                    args->n_flag = 1;
+                }
+                if (argv[i][j] == 's') {
+                    args->s_flag = 1;
+                }
+                if (argv[i][j] == 't' || argv[i][j] == 'T') {
+                    args->t_flag = 1;
+                }
+                if (argv[i][j] == 'v' || argv[i][j] == 't' || argv[i][j] == 'e') {
+                    args->v_flag = 1;
+                }
+            }
+        } else {
+            ++(args->files_count);
+            args->files = realloc(args->files, args->files_count);
+            args->files[args->files_count - 1] = argv[i];
+        }
+    }
+
+    if (args->n_flag && args->b_flag) {
+        args->n_flag = 0;
+    }
+}
+
+char* fill_buffer(Arguments* args, char* buffer, size_t* len) {
+    for (int i = 0; i < args->files_count; ++i) {
+        FILE* file = fopen(args->files[i], "r");
+        if (file != NULL) {
+            fseek(file, 0, SEEK_END);
+            size_t fsize = (size_t) ftell(file);
+            rewind(file);
+
+            buffer = realloc(buffer, *len + fsize + 1);
+            for (size_t j = *len; j < fsize + *len; ++j) {
+                buffer[*len + j] = (char) fgetc(file);
+            }
+            *len += fsize;
+
+            //fclose(file);
+        } else {
+            args->broken_file = 1;
+        }
+    }
+
+    return buffer;
+}
+
 int main(int argc, char** argv) {
     if (argc < 1) {
         puts("wrong arguments number");
     } else {
-        FILE *file = fopen(argv[argc - 1], "r");
-        if (file != NULL) {
-            fseek(file, 0, SEEK_END);
-            size_t fsize = (size_t)ftell(file);
-            rewind(file);
+        Arguments args;
+        shorten_flags(argv, argc);
+        parseArguments(&args, argv, argc);
 
-            char* file_content = calloc(sizeof(char), fsize + 1);
-            fread(file_content, fsize, 1, file);
-            fclose(file);
-
-            shorten_flags(argv, argc - 1);
-            argv = optimize_flags(argv, &argc);
-
-            for (int i = 1; i < argc - 1; ++i) {
-                size_t combo_flags_len = strlen(argv[i]);
-                for (size_t j = 1; j < combo_flags_len; ++j) {
-                    char* modified = apply_flag(file_content, &fsize, argv[i][j]);
-                    free(file_content);
-                    file_content = modified;
-                }
-            }
-            printf("%s", file_content);
-            free(file_content);
-            free(argv);
+        size_t len = 0;
+        char* buffer = NULL;
+        buffer = fill_buffer(&args, buffer, &len);
+        if (!args.broken_file) {
+            char* modified = apply_flags(&args, buffer, &len);
+            printf("%s", modified);
         }
     }
-
 
     return 0;
 }

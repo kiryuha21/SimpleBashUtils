@@ -1,7 +1,20 @@
 #ifndef C3_SIMPLEBASHUTILS_0_S21_CAT_H
 #define C3_SIMPLEBASHUTILS_0_S21_CAT_H
 
-char* apply_flag(char* src, size_t* len, char flag);
+typedef struct Arguments {
+    int b_flag;
+    int e_flag;
+    int n_flag;
+    int s_flag;
+    int t_flag;
+    int v_flag;
+
+    char** files;
+    int files_count;
+    int broken_file;
+} Arguments;
+
+char* apply_flags(Arguments* args, char* buffer, size_t* len);
 char* apply_s_flag(const char* src, size_t* len);
 char* number_lines(char* src, size_t* len, int with_blank);
 
