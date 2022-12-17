@@ -249,13 +249,13 @@ char* fill_buffer(Arguments* args, char* buffer, size_t* len) {
             size_t fsize = (size_t) ftell(file);
             rewind(file);
 
-            buffer = realloc(buffer, *len + fsize + 1);
+            buffer = realloc(buffer, *len + fsize);
             for (size_t j = *len; j < fsize + *len; ++j) {
-                buffer[*len + j] = (char) fgetc(file);
+                buffer[j] = (char) fgetc(file);
             }
             *len += fsize;
 
-            //fclose(file);
+            fclose(file);
         } else {
             args->broken_file = 1;
         }
