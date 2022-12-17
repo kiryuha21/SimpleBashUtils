@@ -4,27 +4,27 @@
 
 #include "s21_cat.h"
 
-char* apply_flag(char* src, char flag) {
+char* apply_flag(char* src, size_t* len, char flag) {
     char* return_value = NULL;
 
     if (flag == 'v') {
-        return_value = two_sym_replacement(src, v_flag_validator, '^', v_flag_second_value);
+        return_value = two_sym_replacement(src, len, v_flag_validator, '^', v_flag_second_value);
     } else if (flag == 'b') {
-        return_value = number_lines(src, 0);
+        return_value = number_lines(src, len, 0);
     } else if (flag == 'n') {
-        return_value = number_lines(src, 1);
+        return_value = number_lines(src, len, 1);
     } else if (flag == 's') {
-        return_value = apply_s_flag(src);
+        return_value = apply_s_flag(src, len);
     } else if (flag == 'E') {
-        return_value = two_sym_replacement(src, e_flag_validator, '$', e_flag_second_value);
+        return_value = two_sym_replacement(src, len, e_flag_validator, '$', e_flag_second_value);
     } else if (flag == 'T') {
-        return_value = two_sym_replacement(src, t_flag_validator, '^', t_flag_second_value);
+        return_value = two_sym_replacement(src, len, t_flag_validator, '^', t_flag_second_value);
     } else if (flag == 't' || flag == 'e') {
-        char* temp = two_sym_replacement(src, v_flag_validator, '^', v_flag_second_value);
+        char* temp = two_sym_replacement(src, len, v_flag_validator, '^', v_flag_second_value);
         if (flag == 't') {
-            return_value = two_sym_replacement(temp, t_flag_validator, '^', t_flag_second_value);
+            return_value = two_sym_replacement(temp, len, t_flag_validator, '^', t_flag_second_value);
         } else {
-            return_value = two_sym_replacement(temp, e_flag_validator, '$', e_flag_second_value);
+            return_value = two_sym_replacement(temp, len, e_flag_validator, '$', e_flag_second_value);
         }
         free(temp);
     }
@@ -107,19 +107,18 @@ char** optimize_flags(char** flags, int* flags_count) {
     return new_flags;
 }
 
-char* apply_s_flag(char* src) {
-    size_t len = strlen(src);
+char* apply_s_flag(const char* src, size_t* len) {
     int changes_count = 0;
     if (src[0] == '\n' && src[1] == '\n') {
         ++changes_count;
     }
-    for (size_t i = 1; i < len - 1; ++i) {
+    for (size_t i = 1; i < *len - 1; ++i) {
         if (src[i] == '\n' && src[i + 1] == '\n' && src[i - 1] == '\n') {
             ++changes_count;
         }
     }
 
-    size_t new_len = len - changes_count;
+    size_t new_len = *len - changes_count;
     char* modified = (char*) calloc(sizeof(char), new_len + 1);
 
     size_t src_index = 0;
@@ -127,7 +126,7 @@ char* apply_s_flag(char* src) {
         ++src_index;
     }
 
-    for (size_t res_index = 0; src_index < len; ++res_index, ++src_index) {
+    for (size_t res_index = 0; src_index < *len; ++res_index, ++src_index) {
         if (src[src_index] == '\n') {
             while (src[src_index + 1] == '\n' && src[src_index - 1] == '\n') {
                 ++src_index;
@@ -137,6 +136,7 @@ char* apply_s_flag(char* src) {
             modified[res_index] = src[src_index];
         }
     }
+    *len = new_len;
 
     return modified;
 }
@@ -166,20 +166,19 @@ char v_flag_second_value(char ch) {
     return return_value;
 }
 
-char* two_sym_replacement(char* src, int (*validator)(char), char first_val, char (*second_val)(char ch)) {
+char* two_sym_replacement(char* src, size_t* len, int (*validator)(char), char first_val, char (*second_val)(char ch)) {
     int changes_count = 0;
-    size_t len = strlen(src);
-    for (size_t i = 0; i < len; ++i) {
+    for (size_t i = 0; i < *len; ++i) {
         if (validator(src[i])) {
             ++changes_count;
         }
     }
 
     char* return_value = NULL;
-    size_t new_len = len + changes_count;
+    size_t new_len = *len + changes_count;
 
     char* modified = (char *) calloc(sizeof(char), new_len + 1);
-    for (size_t src_index = 0, res_index = 0; src_index < len; ++src_index, ++res_index) {
+    for (size_t src_index = 0, res_index = 0; src_index < *len; ++src_index, ++res_index) {
         if (validator(src[src_index])) {
             modified[res_index] = first_val;
             ++res_index;
@@ -189,6 +188,7 @@ char* two_sym_replacement(char* src, int (*validator)(char), char first_val, cha
         }
     }
     return_value = modified;
+    *len = new_len;
 
     return return_value;
 }
@@ -202,20 +202,19 @@ void insert_counter_beginning(char* src, const char* format, size_t ind, int num
     free(new_substr);
 }
 
-char* number_lines(char* src, int with_blank) {
+char* number_lines(char* src, size_t* len, int with_blank) {
     char* return_value = NULL;
 
     if (strcmp(src, "") == 0) {
         return_value = src;
     } else {
-        size_t len = strlen(src);
         int changes_count = 0;
 
         if (with_blank || src[0] != '\n') {
             changes_count += 7;
         }
 
-        for (size_t i = 0; i < len - 1; ++i) {
+        for (size_t i = 0; i < *len - 1; ++i) {
             if (src[i] == '\n') {
                 if (with_blank || src[i + 1] != '\n') {
                     changes_count += 7;
@@ -223,7 +222,7 @@ char* number_lines(char* src, int with_blank) {
             }
         }
 
-        size_t new_len = len + changes_count;
+        size_t new_len = *len + changes_count;
         char* modified = (char*) calloc(sizeof(char), new_len + 1);
 
         int counter = 1;
@@ -234,7 +233,7 @@ char* number_lines(char* src, int with_blank) {
             ++counter;
         }
 
-        for (size_t src_index = 0; src_index < len; ++src_index, ++res_index) {
+        for (size_t src_index = 0; src_index < *len; ++src_index, ++res_index) {
             if (src[src_index] == '\n' && (src[src_index + 1] != '\0' && (with_blank || src[src_index + 1] != '\n'))) {
                 insert_counter_beginning(modified, "\n%6d\t", res_index, counter);
                 res_index += 7;
@@ -244,6 +243,7 @@ char* number_lines(char* src, int with_blank) {
             }
         }
         return_value = modified;
+        *len = new_len;
     }
     return return_value;
 }
@@ -255,7 +255,7 @@ int main(int argc, char** argv) {
         FILE *file = fopen(argv[argc - 1], "r");
         if (file != NULL) {
             fseek(file, 0, SEEK_END);
-            long fsize = ftell(file);
+            size_t fsize = (size_t)ftell(file);
             rewind(file);
 
             char* file_content = calloc(sizeof(char), fsize + 1);
@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
             for (int i = 1; i < argc - 1; ++i) {
                 size_t combo_flags_len = strlen(argv[i]);
                 for (size_t j = 1; j < combo_flags_len; ++j) {
-                    char* modified = apply_flag(file_content, argv[i][j]);
+                    char* modified = apply_flag(file_content, &fsize, argv[i][j]);
                     free(file_content);
                     file_content = modified;
                 }

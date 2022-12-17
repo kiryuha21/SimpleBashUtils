@@ -1,12 +1,12 @@
 #ifndef C3_SIMPLEBASHUTILS_0_S21_CAT_H
 #define C3_SIMPLEBASHUTILS_0_S21_CAT_H
 
-char* apply_flag(char* src, char flag);
-char* apply_s_flag(char* src);
-char* number_lines(char* src, int with_blank);
+char* apply_flag(char* src, size_t* len, char flag);
+char* apply_s_flag(const char* src, size_t* len);
+char* number_lines(char* src, size_t* len, int with_blank);
 
 // main func with callbacks
-char* two_sym_replacement(char* src, int (*validator)(char ch), char first_val, char (*second_val)(char ch));
+char* two_sym_replacement(char* src, size_t* len, int (*validator)(char ch), char first_val, char (*second_val)(char ch));
 
 // v flag callbacks
 int v_flag_validator(char ch);
