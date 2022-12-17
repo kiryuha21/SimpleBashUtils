@@ -44,6 +44,69 @@ void shorten_flags(char** flags, int flags_count) {
     }
 }
 
+char** optimize_flags(char** flags, int* flags_count) {
+    int b = 0, e = 0, n = 0, s = 0, t = 0, v = 0;
+
+    char* first_arg = flags[0];
+    char* last_arg = flags[*flags_count - 1];
+
+    for (int i = 1; i < *flags_count - 1; ++i) {
+        size_t combo_len = strlen(flags[i]);
+        for (size_t j = 1; j < combo_len; ++j) {
+            if (flags[i][j] == 'b') {
+                b = 1;
+            } else if (flags[i][j] == 'e') {
+                e = 1;
+            } else if (flags[i][j] == 'n') {
+                n = 1;
+            } else if (flags[i][j] == 's') {
+                s = 1;
+            } else if (flags[i][j] == 't') {
+                t = 1;
+            } else if (flags[i][j] == 'v') {
+                v = 1;
+            }
+        }
+    }
+
+    *flags_count = b + e + n + s + t + v + 2;
+    if (b && n) {
+        --(*flags_count);
+    }
+    char** new_flags = (char**) calloc(sizeof(char*), *flags_count);
+
+    new_flags[0] = first_arg;
+
+    int last_ind = 1;
+    if (s) {
+        new_flags[last_ind] = "-s";
+        ++last_ind;
+    }
+    if (t) {
+        new_flags[last_ind] = "-t";
+        ++last_ind;
+    }
+    if (b) {
+        new_flags[last_ind] = "-b";
+        ++last_ind;
+    }
+    if (e) {
+        new_flags[last_ind] = "-e";
+        ++last_ind;
+    }
+    if (v) {
+        new_flags[last_ind] = "-v";
+        ++last_ind;
+    } else if (n) {
+        new_flags[last_ind] = "-n";
+        ++last_ind;
+    }
+
+    new_flags[last_ind] = last_arg;
+
+    return new_flags;
+}
+
 char* apply_s_flag(char* src) {
     size_t len = strlen(src);
     int changes_count = 0;
@@ -57,14 +120,14 @@ char* apply_s_flag(char* src) {
     }
 
     size_t new_len = len - changes_count;
-    char* modified = (char*) calloc(sizeof(char), new_len);
+    char* modified = (char*) calloc(sizeof(char), new_len + 1);
 
     size_t src_index = 0;
     if (src[0] == '\n' && src[1] == '\n') {
         ++src_index;
     }
 
-    for (size_t res_index = 0; src_index < len - 1; ++res_index, ++src_index) {
+    for (size_t res_index = 0; src_index < len; ++res_index, ++src_index) {
         if (src[src_index] == '\n') {
             while (src[src_index + 1] == '\n' && src[src_index - 1] == '\n') {
                 ++src_index;
@@ -87,7 +150,7 @@ char e_flag_second_value(char) { return '\n'; }
 int v_flag_validator(char ch) {
     int return_value = 0;
     if (((ch >= 0 && ch <= 31) || ch == 127) &&
-        (ch != '\n' && ch != '\f' && ch != '\t')) {
+        (ch != '\n' && ch != '\t')) {
         return_value = 1;
     }
     return return_value;
@@ -114,21 +177,18 @@ char* two_sym_replacement(char* src, int (*validator)(char), char first_val, cha
 
     char* return_value = NULL;
     size_t new_len = len + changes_count;
-    if (new_len == len) {
-        return_value = src;
-    } else {
-        char* modified = (char *) calloc(sizeof(char), new_len + 1);
-        for (size_t src_index = 0, res_index = 0; src_index < len - 1; ++src_index, ++res_index) {
-            if (validator(src[src_index])) {
-                modified[res_index] = first_val;
-                ++res_index;
-                modified[res_index] = second_val(src[src_index]);
-            } else {
-                modified[res_index] = src[src_index];
-            }
+
+    char* modified = (char *) calloc(sizeof(char), new_len + 1);
+    for (size_t src_index = 0, res_index = 0; src_index < len; ++src_index, ++res_index) {
+        if (validator(src[src_index])) {
+            modified[res_index] = first_val;
+            ++res_index;
+            modified[res_index] = second_val(src[src_index]);
+        } else {
+            modified[res_index] = src[src_index];
         }
-        return_value = modified;
     }
+    return_value = modified;
 
     return return_value;
 }
@@ -136,7 +196,9 @@ char* two_sym_replacement(char* src, int (*validator)(char), char first_val, cha
 void insert_counter_beginning(char* src, const char* format, size_t ind, int num) {
     char* new_substr = (char*) calloc(sizeof(char), 9);
     sprintf(new_substr, format, num);
-    strcpy(&src[ind], new_substr);
+    for (int i = 0; i < 8; ++i) {
+        src[ind + i] = new_substr[i];
+    }
     free(new_substr);
 }
 
@@ -148,16 +210,21 @@ char* number_lines(char* src, int with_blank) {
     } else {
         size_t len = strlen(src);
         int changes_count = 0;
+
+        if (with_blank || src[0] != '\n') {
+            changes_count += 7;
+        }
+
         for (size_t i = 0; i < len - 1; ++i) {
             if (src[i] == '\n') {
-                if (with_blank || (src[i + 1] != '\n' && i != 0)) {
+                if (with_blank || src[i + 1] != '\n') {
                     changes_count += 7;
                 }
             }
         }
 
         size_t new_len = len + changes_count;
-        char* modified = (char*) calloc(sizeof(char), new_len);
+        char* modified = (char*) calloc(sizeof(char), new_len + 1);
 
         int counter = 1;
         size_t res_index = 0;
@@ -167,13 +234,11 @@ char* number_lines(char* src, int with_blank) {
             ++counter;
         }
 
-        for (size_t src_index = 0; src_index < len - 1; ++src_index, ++res_index) {
-            if (src[src_index] == '\n') {
-                if (with_blank || src[src_index] != '\n') {
-                    insert_counter_beginning(modified, "\n%6d\t", res_index, counter);
-                    res_index += 7;
-                    ++counter;
-                }
+        for (size_t src_index = 0; src_index < len; ++src_index, ++res_index) {
+            if (src[src_index] == '\n' && (src[src_index + 1] != '\0' && (with_blank || src[src_index + 1] != '\n'))) {
+                insert_counter_beginning(modified, "\n%6d\t", res_index, counter);
+                res_index += 7;
+                ++counter;
             } else {
                 modified[res_index] = src[src_index];
             }
@@ -188,9 +253,7 @@ int main(int argc, char** argv) {
         puts("wrong arguments number");
     } else {
         FILE *file = fopen(argv[argc - 1], "r");
-        if (file == NULL) {
-            puts("file opening error");
-        } else {
+        if (file != NULL) {
             fseek(file, 0, SEEK_END);
             long fsize = ftell(file);
             rewind(file);
@@ -200,6 +263,8 @@ int main(int argc, char** argv) {
             fclose(file);
 
             shorten_flags(argv, argc - 1);
+            argv = optimize_flags(argv, &argc);
+
             for (int i = 1; i < argc - 1; ++i) {
                 size_t combo_flags_len = strlen(argv[i]);
                 for (size_t j = 1; j < combo_flags_len; ++j) {
@@ -208,8 +273,9 @@ int main(int argc, char** argv) {
                     file_content = modified;
                 }
             }
-            puts(file_content);
+            printf("%s", file_content);
             free(file_content);
+            free(argv);
         }
     }
 

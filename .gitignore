@@ -2,7 +2,7 @@
 .idea
 
 # Test files
-test*
+*test*
 
 # Prerequisites
 *.d
