@@ -1,9 +1,6 @@
 # CLion generics
 .idea
 
-# Test files
-*test*
-
 # Prerequisites
 *.d
 

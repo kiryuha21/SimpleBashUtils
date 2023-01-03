@@ -75,7 +75,7 @@ char* apply_s_flag(const char* src, size_t* len) {
 
     for (size_t res_index = 0; src_index < *len; ++res_index, ++src_index) {
         if (src[src_index] == '\n') {
-            while (src[src_index + 1] == '\n' && src[src_index - 1] == '\n') {
+            while (src_index < *len - 1 && src[src_index + 1] == '\n' && src_index > 0 && src[src_index - 1] == '\n') {
                 ++src_index;
             }
             modified[res_index] = '\n';
@@ -181,7 +181,7 @@ char* number_lines(char* src, size_t* len, int with_blank) {
         }
 
         for (size_t src_index = 0; src_index < *len; ++src_index, ++res_index) {
-            if (src[src_index] == '\n' && (src[src_index + 1] != '\0' && (with_blank || src[src_index + 1] != '\n'))) {
+            if (src[src_index] == '\n' && (src_index < *len - 1 && (with_blank || src[src_index + 1] != '\n'))) {
                 insert_counter_beginning(modified, "\n%6d\t", res_index, counter);
                 res_index += 7;
                 ++counter;
@@ -195,7 +195,7 @@ char* number_lines(char* src, size_t* len, int with_blank) {
     return return_value;
 }
 
-void parseArguments(Arguments* args, char** argv, int argc) {
+void init_arguments(Arguments* args) {
     args->b_flag = 0;
     args->e_flag = 0;
     args->n_flag = 0;
@@ -205,7 +205,9 @@ void parseArguments(Arguments* args, char** argv, int argc) {
     args->files_count = 0;
     args->broken_file = 0;
     args->files = NULL;
+}
 
+void parse_arguments(Arguments* args, char** argv, int argc) {
     for (int i = 1; i < argc; ++i) {
         if (argv[i][0] == '-') {
             size_t len = strlen(argv[i]);
@@ -231,8 +233,9 @@ void parseArguments(Arguments* args, char** argv, int argc) {
             }
         } else {
             ++(args->files_count);
-            args->files = realloc(args->files, args->files_count);
-            args->files[args->files_count - 1] = argv[i];
+            args->files = realloc(args->files, args->files_count * sizeof(char*));
+            args->files[args->files_count - 1] = (char*) calloc(strlen(argv[i]) + 1, sizeof(char));
+            strcpy(args->files[args->files_count - 1], argv[i]);
         }
     }
 
@@ -249,7 +252,7 @@ char* fill_buffer(Arguments* args, char* buffer, size_t* len) {
             size_t fsize = (size_t) ftell(file);
             rewind(file);
 
-            buffer = realloc(buffer, *len + fsize);
+            buffer = realloc(buffer, sizeof(char) * (*len + fsize + 1));
             for (size_t j = *len; j < fsize + *len; ++j) {
                 buffer[j] = (char) fgetc(file);
             }
@@ -259,6 +262,9 @@ char* fill_buffer(Arguments* args, char* buffer, size_t* len) {
         } else {
             args->broken_file = 1;
         }
+    }
+    if (!args->broken_file) {
+        buffer[*len] = '\0';
     }
 
     return buffer;
@@ -270,14 +276,27 @@ int main(int argc, char** argv) {
     } else {
         Arguments args;
         shorten_flags(argv, argc);
-        parseArguments(&args, argv, argc);
+        init_arguments(&args);
+        parse_arguments(&args, argv, argc);
 
         size_t len = 0;
         char* buffer = NULL;
         buffer = fill_buffer(&args, buffer, &len);
         if (!args.broken_file) {
-            char* modified = apply_flags(&args, buffer, &len);
-            printf("%s", modified);
+            buffer = apply_flags(&args, buffer, &len);
+            printf("%s", buffer);
+        }
+
+        if (buffer != NULL) {
+            free(buffer);
+        }
+        if (args.files != NULL) {
+            for (int i = 0; i < args.files_count; ++i) {
+                if (args.files[i] != NULL) {
+                    free(args.files[i]);
+                }
+            }
+            free(args.files);
         }
     }
 
