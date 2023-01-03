@@ -23,7 +23,7 @@ build_cat_no_flags:
 	$(CC) $(STANDARD) $(CAT_SRC) -o $(CAT_TARGET)
 
 s21_grep:
-	$(CC) $(FLAGS) $(STANDARD) $(GREP_SRC) -o $(GREP_TARGET)
+	$(CC) $(FLAGS) $(STANDARD) $(GREP_SRC) -D _GNU_SOURCE -o $(GREP_TARGET)
 
 build_grep_no_flags:
 	$(CC) $(STANDARD) $(GREP_SRC) -o $(GREP_TARGET)
