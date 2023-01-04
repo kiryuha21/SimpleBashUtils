@@ -26,8 +26,8 @@ typedef struct Arguments {
     int o_flag;
 
     StringVector files;
-    char* template;
-    char* regex_file;
+    StringVector templates;
+    StringVector regex_files;
 } Arguments;
 
 #endif //C3_SIMPLEBASHUTILS_0_S21_GREP_H
