@@ -207,13 +207,17 @@ void init_line_info(LineInfo* info, char* filename, char* full_line, char* match
     info->line_number = line_number;
 }
 
+void push_filename(Arguments* args, StringVector* vec, char* filename) {
+    if (args->files.size > 1 && !args->h_flag) {
+        push_back(vec, filename);
+        push_back(vec, ":");
+    }
+}
+
 void output_line(StringVector* acc, Arguments* args, LineInfo* info) {
     strip_end(&info->full_line);
 
-    if (args->files.size > 1 && !args->h_flag) {
-        push_back(acc, info->filename);
-        push_back(acc, ":");
-    }
+    push_filename(args, acc, info->filename);
     if (args->n_flag) {
         char num_buff[10];
         sprintf(num_buff, "%d", info->line_number);
@@ -229,37 +233,12 @@ void output_line(StringVector* acc, Arguments* args, LineInfo* info) {
 }
 
 void output_count(StringVector* acc, Arguments* args, LineInfo* info) {
-    static char* current_file = NULL;
-    static int current_index = 0;
+    int current_index = (args->files.size > 1 && !args->h_flag) ? 2 : 0;
 
     if (acc->size == 0) {
-        for (int i = 0; i < args->files.size; ++i) {
-            FILE* file_check = fopen(args->files.strings[i], "r");
-            if (file_check != NULL) {
-                if (args->files.size > 1 && !args->h_flag) {
-                    push_back(acc, args->files.strings[i]);
-                    push_back(acc, ":");
-                }
-                push_back(acc, "0");
-                push_back(acc, "\n");
-                fclose(file_check);
-            }
-        }
-    }
-
-    if (info->filename != current_file) {
-        if (current_file == NULL) {
-            if (args->files.size > 1 && !args->h_flag) {
-                current_index = 2;
-            }
-        } else {
-            if (args->files.size > 1 && !args->h_flag) {
-                current_index += 4;
-            } else {
-                current_index += 2;
-            }
-        }
-        current_file = info->filename;
+        push_filename(args, acc, info->filename);
+        push_back(acc, "0");
+        push_back(acc, "\n");
     }
 
     int num = atoi(acc->strings[current_index]);
@@ -337,6 +316,12 @@ void main_search(Arguments* args, void(*match_action)(StringVector*, Arguments*,
             }
             free(line);
             fclose(file);
+
+            if (!args->l_flag && args->c_flag && accumulator.size == 0) {
+                push_filename(args, &accumulator, args->files.strings[i]);
+                push_back(&accumulator, "0");
+                push_back(&accumulator, "\n");
+            }
             for (int j = 0; j < accumulator.size; ++j) {
                 printf("%s", accumulator.strings[j]);
             }
@@ -350,10 +335,10 @@ void main_search(Arguments* args, void(*match_action)(StringVector*, Arguments*,
 }
 
 void apply_flags(Arguments* args) {
-    if (args->c_flag) {
-        main_search(args, output_count);
-    } else if (args->l_flag) {
+    if (args->l_flag) {
         main_search(args, output_files);
+    } else if (args->c_flag) {
+        main_search(args, output_count);
     } else if (args->e_flag) {
         main_search(args, output_line);
     }
