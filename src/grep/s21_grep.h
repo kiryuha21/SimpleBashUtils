@@ -1,8 +1,9 @@
 #ifndef C3_SIMPLEBASHUTILS_0_S21_GREP_H
 #define C3_SIMPLEBASHUTILS_0_S21_GREP_H
 
-#define ERR     (-1)
-#define SUCCESS   1
+#define NOT_FOUND (-1)
+#define ERR       (-1)
+#define SUCCESS     1
 
 #define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
 
@@ -13,6 +14,8 @@ typedef struct StringVector {
 
 void init_vector(StringVector* vec);
 void push_back(StringVector* vec, char* string);
+int get_index_of(StringVector* vec, char* str);
+void replace_at(StringVector* vec, int ind, char* str);
 void clear(StringVector* vec);
 
 typedef struct Arguments {
