@@ -71,6 +71,24 @@ void replace_at(StringVector* vec, int ind, char* str) {
     strcpy(vec->strings[ind], str);
 }
 
+StringVector remove_at(StringVector* vec, int ind) {
+    StringVector res;
+    init_vector(&res);
+
+    res.size = vec->size - 1;
+    res.strings = calloc(sizeof(char*), res.size);
+
+    for (int i = 0; i < ind; ++i) {
+        allocate_and_copy(&res.strings[i], &vec->strings[i]);
+    }
+    for (int i = ind + 1; i < vec->size; ++i) {
+        allocate_and_copy(&res.strings[i - 1], &vec->strings[i]);
+    }
+    clear(vec);
+
+    return res;
+}
+
 void free_args(Arguments* args) {
     clear(&args->files);
     clear(&args->regex_files);
@@ -216,12 +234,16 @@ void output_count(StringVector* acc, Arguments* args, LineInfo* info) {
 
     if (acc->size == 0) {
         for (int i = 0; i < args->files.size; ++i) {
-            if (args->files.size > 1 && !args->h_flag) {
-                push_back(acc, args->files.strings[i]);
-                push_back(acc, ":");
+            FILE* file_check = fopen(args->files.strings[i], "r");
+            if (file_check != NULL) {
+                if (args->files.size > 1 && !args->h_flag) {
+                    push_back(acc, args->files.strings[i]);
+                    push_back(acc, ":");
+                }
+                push_back(acc, "0");
+                push_back(acc, "\n");
+                fclose(file_check);
             }
-            push_back(acc, "0");
-            push_back(acc, "\n");
         }
     }
 
