@@ -5,6 +5,13 @@
 
 #include "s21_grep.h"
 
+void strip_end(char** str) {
+    size_t len = strlen(*str);
+    if ((*str)[len - 1] == '\n') {
+        (*str)[len - 1] = '\0';
+    }
+}
+
 void allocate_and_copy(char** dst, char** src) {
     *dst = (char*) calloc(sizeof(char), strlen(*src) + 1);
     strcpy(*dst, *src);
@@ -73,13 +80,30 @@ void free_args(Arguments* args) {
 int parse_arguments(Arguments* args, char** argv, int argc) {
     int res = SUCCESS;
 
+    int templates_present = 0;
+    for (int i = 1; i < argc && !templates_present; ++i) {
+        if (argv[i][0] == '-') {
+            size_t len = strlen(argv[i]);
+            for (size_t j = 1; j < len; ++j) {
+                if (argv[i][j] == 'e' || argv[i][j] == 'f') {
+                    templates_present = 1;
+                }
+            }
+        }
+    }
+
     for (int i = 1; i < argc && res == SUCCESS; ++i) {
         if (argv[i][0] == '-') {
             size_t len = strlen(argv[i]);
             for (size_t j = 1; j < len && res == SUCCESS; ++j) {
-                if (argv[i][j] == 'e' && j == len - 1 && i < argc - 1) {
-                    ++i;
-                    push_back(&args->templates, argv[i]);
+                if (argv[i][j] == 'e') {
+                    if (j == len - 1 && i < argc - 1) {
+                        ++i;
+                        push_back(&args->templates, argv[i]);
+                    } else if (j != len - 1) {
+                        push_back(&args->templates, argv[i] + j + 1);
+                        j = len - 1;
+                    }
                 } else if (argv[i][j] == 'i') {
                     args->i_flag = 1;
                 } else if (argv[i][j] == 'v') {
@@ -97,7 +121,7 @@ int parse_arguments(Arguments* args, char** argv, int argc) {
                 } else if (argv[i][j] == 'f') {
                     args->f_flag = 1;
 
-                    if (j == len - 1 && i < argc - 2) {
+                    if (j == len - 1 && i < argc - 1) {
                         ++i;
                         push_back(&args->regex_files, argv[i]);
                     } else {
@@ -109,10 +133,11 @@ int parse_arguments(Arguments* args, char** argv, int argc) {
                 }
             }
         } else {
-            if (args->templates.size == 0) {
-                push_back(&args->templates, argv[i]);
-            } else {
+            if (templates_present) {
                 push_back(&args->files, argv[i]);
+            } else {
+                push_back(&args->templates, argv[i]);
+                templates_present = 1;
             }
         }
     }
@@ -124,7 +149,7 @@ int parse_arguments(Arguments* args, char** argv, int argc) {
     return res;
 }
 
-char* make_template(StringVector* templates) {
+char* make_regex(StringVector* templates) {
     size_t size = 0;
     size_t first_len = strlen(templates->strings[0]);
 
@@ -149,25 +174,35 @@ char* make_template(StringVector* templates) {
     return result;
 }
 
-void output_line(StringVector* acc, StringVector* files, char* line, char* filename) {
-    size_t line_len = strlen(line);
-    if (line[line_len - 1] == '\n') {
-        line[line_len - 1] = '\0';
-    }
+void init_line_info(LineInfo* info, char* filename, char* full_line, char* matching_line, int line_number) {
+    info->filename = filename;
+    info->full_line = full_line;
+    info->matching_line = matching_line;
+    info->line_number = line_number;
+}
 
-    if (files->size > 1) {
-        push_back(acc, filename);
+void output_line(StringVector* acc, Arguments* args, LineInfo* info) {
+    strip_end(&info->full_line);
+
+    if (args->files.size > 1 && !args->h_flag) {
+        push_back(acc, info->filename);
         push_back(acc, ":");
     }
-    push_back(acc, line);
+    if (args->n_flag) {
+        char num_buff[10];
+        sprintf(num_buff, "%d", info->line_number);
+        push_back(acc, num_buff);
+        push_back(acc, ":");
+    }
+    push_back(acc, info->full_line);
     push_back(acc, "\n");
 }
 
-void output_count(StringVector* acc, StringVector* files, char*, char* filename) {
+void output_count(StringVector* acc, Arguments* args, LineInfo* info) {
     if (acc->size == 0) {
-        for (int i = 0; i < files->size; ++i) {
-            if (files->size > 1) {
-                push_back(acc, files->strings[i]);
+        for (int i = 0; i < args->files.size; ++i) {
+            if (args->files.size > 1) {
+                push_back(acc, args->files.strings[i]);
                 push_back(acc, ":");
             }
             push_back(acc, "0");
@@ -175,7 +210,7 @@ void output_count(StringVector* acc, StringVector* files, char*, char* filename)
         }
     }
 
-    int ind = get_index_of(acc, filename);
+    int ind = get_index_of(acc, info->filename);
     int num = atoi(acc->strings[ind + 2]);
 
     char buff[10];
@@ -184,14 +219,16 @@ void output_count(StringVector* acc, StringVector* files, char*, char* filename)
     replace_at(acc, ind + 2, buff);
 }
 
-void basic_search(Arguments* args, void(*match_action)(StringVector*, StringVector*, char*, char*)) {
-    char* combo_template = make_template(&args->templates);
+void main_search(Arguments* args, void(*match_action)(StringVector*, Arguments*, LineInfo*)) {
+    char* combo_template = make_regex(&args->templates);
 
-    regex_t reg;
-    regcomp(&reg, combo_template, args->i_flag ? REG_ICASE : 0);
+    regex_t    reg;
+    regmatch_t match_buffer[1];
+    regoff_t   match_len;
 
-    int res = SUCCESS;
-    for (int i = 0; i < args->files.size && res == SUCCESS; ++i) {
+    regcomp(&reg, combo_template, args->i_flag ? REG_ICASE : 0);  // i flag
+
+    for (int i = 0; i < args->files.size; ++i) {
         FILE* file = fopen(args->files.strings[i], "r");
         if (file != NULL) {
             char* line = NULL;
@@ -200,20 +237,37 @@ void basic_search(Arguments* args, void(*match_action)(StringVector*, StringVect
             StringVector accumulator;
             init_vector(&accumulator);
 
-            while (getline(&line, &len, file) != -1) {
-                int reg_res = regexec(&reg, line, 0, NULL, 0);
-                if ((reg_res == 0 && !args->v_flag) || args->v_flag) {
-                    match_action(&accumulator, &args->files, line, args->files.strings[i]);
+            for (int j = 1; getline(&line, &len, file) != -1; ++j) {
+                int reg_res = regexec(&reg, line, ARRAY_SIZE(match_buffer), match_buffer, 0);
+
+                if ((reg_res == 0 && !args->v_flag) || (reg_res != 0 && args->v_flag)) {  // v flag
+                    char* pure_match = NULL;
+                    if (!args->v_flag) {
+                        match_len = match_buffer[0].rm_eo - match_buffer[0].rm_so;
+                        pure_match = calloc(sizeof(char), match_len + 1);
+                        sprintf(pure_match, "%.*s", match_len, line + match_buffer[0].rm_so);
+                    } else {
+                        pure_match = line;
+                    }
+
+                    LineInfo info;
+                    init_line_info(&info, args->files.strings[i], line, pure_match, j);
+                    match_action(&accumulator, args, &info);
+
+                    if (!args->v_flag) {
+                        free(pure_match);
+                    }
                 }
+                free(line);
+                line = NULL;
             }
+            free(line);
             fclose(file);
             for (int j = 0; j < accumulator.size; ++j) {
                 printf("%s", accumulator.strings[j]);
             }
 
             clear(&accumulator);
-        } else {
-            res = ERR;
         }
     }
 
@@ -223,9 +277,23 @@ void basic_search(Arguments* args, void(*match_action)(StringVector*, StringVect
 
 void apply_flags(Arguments* args) {
     if (args->e_flag) {
-        basic_search(args, output_line);
+        main_search(args, output_line);
     } else if (args->c_flag) {
-        basic_search(args, output_count);
+        main_search(args, output_count);
+    }
+}
+
+void process_regex_files(Arguments* args) {
+    for (int i = 0; i < args->regex_files.size; ++i) {
+        FILE* file = fopen(args->regex_files.strings[i], "r");
+        if (file != NULL) {
+            char *line = NULL;
+            size_t len;
+            while (getline(&line, &len, file) != -1) {
+                strip_end(&line);
+                push_back(&args->templates, line);
+            }
+        }
     }
 }
 
@@ -236,6 +304,7 @@ int main(int argc, char** argv) {
         Arguments args;
         init_arguments(&args);
         if (parse_arguments(&args, argv, argc) == SUCCESS) {
+            process_regex_files(&args);
             apply_flags(&args);
         }
         free_args(&args);

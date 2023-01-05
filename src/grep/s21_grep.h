@@ -4,6 +4,8 @@
 #define ERR     (-1)
 #define SUCCESS   1
 
+#define ARRAY_SIZE(arr) (sizeof((arr)) / sizeof((arr)[0]))
+
 typedef struct StringVector {
     int size;
     char** strings;
@@ -29,5 +31,14 @@ typedef struct Arguments {
     StringVector templates;
     StringVector regex_files;
 } Arguments;
+
+typedef struct LineInfo {
+    char* filename;
+    char* full_line;
+    char* matching_line;
+    int line_number;
+} LineInfo;
+
+void init_line_info(LineInfo* info, char* filename, char* full_line, char* matching_line, int line_number);
 
 #endif //C3_SIMPLEBASHUTILS_0_S21_GREP_H
