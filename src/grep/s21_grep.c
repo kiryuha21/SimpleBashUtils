@@ -71,24 +71,6 @@ void replace_at(StringVector* vec, int ind, char* str) {
     strcpy(vec->strings[ind], str);
 }
 
-StringVector remove_at(StringVector* vec, int ind) {
-    StringVector res;
-    init_vector(&res);
-
-    res.size = vec->size - 1;
-    res.strings = calloc(sizeof(char*), res.size);
-
-    for (int i = 0; i < ind; ++i) {
-        allocate_and_copy(&res.strings[i], &vec->strings[i]);
-    }
-    for (int i = ind + 1; i < vec->size; ++i) {
-        allocate_and_copy(&res.strings[i - 1], &vec->strings[i]);
-    }
-    clear(vec);
-
-    return res;
-}
-
 void free_args(Arguments* args) {
     clear(&args->files);
     clear(&args->regex_files);
@@ -160,7 +142,44 @@ int parse_arguments(Arguments* args, char** argv, int argc) {
         }
     }
 
+    if (args->c_flag) {
+        args->o_flag = 0;
+    }
+
     return res;
+}
+
+int is_escape_sym(char ch) {
+    return ch =='(' || ch == ')';
+}
+
+int count_escapes_in_string(char* string) {
+    int count = 0;
+    size_t len = strlen(string);
+    for (size_t i = 0; i < len; ++i) {
+        if (is_escape_sym(string[i])) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+int count_escapes_in_vector(StringVector* templates) {
+    int count = 0;
+    for (int i = 0; i < templates->size; ++i) {
+        count += count_escapes_in_string(templates->strings[i]);
+    }
+    return count;
+}
+
+void copy_with_escapes(char* dst, char* src) {
+    for (;*src != '\0';++dst, ++src) {
+        if (is_escape_sym(*src)) {
+            *dst = '\\';
+            ++dst;
+        }
+        *dst = *src;
+    }
 }
 
 char* make_regex(StringVector* templates) {
@@ -174,6 +193,7 @@ char* make_regex(StringVector* templates) {
     if (templates->size > 1) {
         size += 2;  // for ()
     }
+    size += count_escapes_in_vector(templates);
 
     char* result = (char*) calloc(sizeof(char), size + 1);
     char* temp = result;
@@ -183,14 +203,14 @@ char* make_regex(StringVector* templates) {
         ++temp;
     }
 
-    strcpy(temp, templates->strings[0]);
-    temp += first_len;
+    copy_with_escapes(temp, templates->strings[0]);
+    temp += first_len + count_escapes_in_string(templates->strings[0]);
 
     for (int i = 1; i < templates->size; ++i) {
         *temp = '|';
         ++temp;
-        strcpy(temp, templates->strings[i]);
-        temp += strlen(templates->strings[i]);
+        copy_with_escapes(temp, templates->strings[i]);
+        temp += strlen(templates->strings[i]) + count_escapes_in_string(templates->strings[i]);
     }
 
     if (templates->size > 1) {
@@ -339,7 +359,7 @@ void apply_flags(Arguments* args) {
         main_search(args, output_files);
     } else if (args->c_flag) {
         main_search(args, output_count);
-    } else if (args->e_flag) {
+    } else if (args->e_flag && !(args->o_flag && args->v_flag)) {
         main_search(args, output_line);
     }
 }
@@ -352,9 +372,7 @@ void process_regex_files(Arguments* args) {
             size_t len;
             while (getline(&line, &len, file) != -1) {
                 strip_end(&line);
-                if (strcmp(line, "") != 0) {
-                    push_back(&args->templates, line);
-                }
+                push_back(&args->templates, line);
             }
         }
     }

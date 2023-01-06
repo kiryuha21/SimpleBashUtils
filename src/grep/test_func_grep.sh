@@ -77,75 +77,75 @@ do
     done
 done
 
-## 2 параметра
-#for var1 in v c l n h o
-#do
-#    for var2 in v c l n h o
-#    do
-#        if [ $var1 != $var2 ]
-#        then
-#            for i in "${tests[@]}"
-#            do
-#                var="-$var1 -$var2"
-#                testing $i
-#            done
-#        fi
-#    done
-#done
-#
-## 3 параметра
-#for var1 in v c l n h o
-#do
-#    for var2 in v c l n h o
-#    do
-#        for var3 in v c l n h o
-#        do
-#            if [ $var1 != $var2 ] && [ $var2 != $var3 ] && [ $var1 != $var3 ]
-#            then
-#                for i in "${tests[@]}"
-#                do
-#                    var="-$var1 -$var2 -$var3"
-#                    testing $i
-#                done
-#            fi
-#        done
-#    done
-#done
-#
-## 2 сдвоенных параметра
-#for var1 in v c l n h o
-#do
-#    for var2 in v c l n h o
-#    do
-#        if [ $var1 != $var2 ]
-#        then
-#            for i in "${tests[@]}"
-#            do
-#                var="-$var1$var2"
-#                testing $i
-#            done
-#        fi
-#    done
-#done
-#
-## 3 строенных параметра
-#for var1 in v c l n h o
-#do
-#    for var2 in v c l n h o
-#    do
-#        for var3 in v c l n h o
-#        do
-#            if [ $var1 != $var2 ] && [ $var2 != $var3 ] && [ $var1 != $var3 ]
-#            then
-#                for i in "${tests[@]}"
-#                do
-#                    var="-$var1$var2$var3"
-#                    testing $i
-#                done
-#            fi
-#        done
-#    done
-#done
+# 2 параметра
+for var1 in v c l n h o
+do
+    for var2 in v c l n h o
+    do
+        if [ $var1 != $var2 ]
+        then
+            for i in "${tests[@]}"
+            do
+                var="-$var1 -$var2"
+                testing $i
+            done
+        fi
+    done
+done
+
+# 3 параметра
+for var1 in v c l n h o
+do
+    for var2 in v c l n h o
+    do
+        for var3 in v c l n h o
+        do
+            if [ $var1 != $var2 ] && [ $var2 != $var3 ] && [ $var1 != $var3 ]
+            then
+                for i in "${tests[@]}"
+                do
+                    var="-$var1 -$var2 -$var3"
+                    testing $i
+                done
+            fi
+        done
+    done
+done
+
+# 2 сдвоенных параметра
+for var1 in v c l n h o
+do
+    for var2 in v c l n h o
+    do
+        if [ $var1 != $var2 ]
+        then
+            for i in "${tests[@]}"
+            do
+                var="-$var1$var2"
+                testing $i
+            done
+        fi
+    done
+done
+
+# 3 строенных параметра
+for var1 in v c l n h o
+do
+    for var2 in v c l n h o
+    do
+        for var3 in v c l n h o
+        do
+            if [ $var1 != $var2 ] && [ $var2 != $var3 ] && [ $var1 != $var3 ]
+            then
+                for i in "${tests[@]}"
+                do
+                    var="-$var1$var2$var3"
+                    testing $i
+                done
+            fi
+        done
+    done
+done
 
 echo -e "\033[31mFAIL: $FAIL\033[0m"
 echo -e "\033[32mSUCCESS: $SUCCESS\033[0m"
