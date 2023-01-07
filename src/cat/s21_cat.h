@@ -1,6 +1,8 @@
 #ifndef C3_SIMPLEBASHUTILS_0_S21_CAT_H
 #define C3_SIMPLEBASHUTILS_0_S21_CAT_H
 
+#include <stdlib.h>
+
 typedef struct Arguments {
   int b_flag;
   int e_flag;

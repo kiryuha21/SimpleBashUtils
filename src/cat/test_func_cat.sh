@@ -27,7 +27,7 @@ testing()
 {
     t=$(echo $@ | sed "s/VAR/$var/")
     # echo "MAKING $t"
-    ../../bin/s21_cat $t > test_s21_cat.log
+    ./s21_cat $t > test_s21_cat.log
     cat $t > test_sys_cat.log
     DIFF_RES="$(diff -s test_s21_cat.log test_sys_cat.log)"
     (( COUNTER++ ))

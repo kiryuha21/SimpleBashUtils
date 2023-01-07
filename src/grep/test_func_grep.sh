@@ -45,7 +45,7 @@ declare -a extra=(
 testing()
 {
     t=$(echo $@ | sed "s/VAR/$var/")
-    ../../bin/s21_grep $t > test_s21_grep.log
+    ./s21_grep $t > test_s21_grep.log
     grep $t > test_sys_grep.log
     DIFF_RES="$(diff -s test_s21_grep.log test_sys_grep.log)"
     (( COUNTER++ ))
