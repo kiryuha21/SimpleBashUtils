@@ -1,5 +1,9 @@
 # CLion generics
 .idea
+cmake-build-debug
+CMakeLists.txt
+
+src/*/.clang-format
 
 # Prerequisites
 *.d
