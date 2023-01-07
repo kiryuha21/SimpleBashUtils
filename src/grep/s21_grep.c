@@ -317,7 +317,7 @@ void main_search(Arguments* args,
             if (!args->v_flag) {
               match_len = match_buffer[0].rm_eo - match_buffer[0].rm_so;
               pure_match = calloc(sizeof(char), match_len + 1);
-              sprintf(pure_match, "%.*s", match_len,
+              sprintf(pure_match, "%.*s", (int)match_len,
                       temp_line + match_buffer[0].rm_so);
             } else {
               pure_match = line;
