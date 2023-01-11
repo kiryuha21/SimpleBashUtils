@@ -1,5 +1,6 @@
 #!/bin/bash
 
+
 SUCCESS=0
 FAIL=0
 COUNTER=0
